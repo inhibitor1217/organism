@@ -34,13 +34,19 @@ async function orthographicCamera(scene: Scene): Promise<Camera> {
   const camera = new ArcRotateCamera('camera', -0.5 * Math.PI, 0.5 * Math.PI, 4, Vector3.Zero(), scene)
 
   camera.mode = Camera.ORTHOGRAPHIC_CAMERA
-  const rect = camera.getEngine().getRenderingCanvasClientRect()
-  const aspectRatio = rect ? (rect.width / rect.height) : 1.0
 
-  camera.orthoLeft = -camera.radius * aspectRatio;
-  camera.orthoRight = camera.radius * aspectRatio;
-  camera.orthoBottom = -camera.radius;
-  camera.orthoTop = camera.radius;
+  function applyAspectRatio() {
+    const rect = camera.getEngine().getRenderingCanvasClientRect()
+    const aspectRatio = rect ? (rect.width / rect.height) : 1.0
+
+    camera.orthoLeft = -camera.radius * aspectRatio;
+    camera.orthoRight = camera.radius * aspectRatio;
+    camera.orthoBottom = -camera.radius;
+    camera.orthoTop = camera.radius;
+  }
+  
+  applyAspectRatio()
+  window.addEventListener('resize', applyAspectRatio)
   
   camera.setTarget(Vector3.Zero())
 
@@ -48,10 +54,16 @@ async function orthographicCamera(scene: Scene): Promise<Camera> {
 }
 
 async function fullQuad(scene: Scene): Promise<Mesh> {
-  const rect = scene.getEngine().getRenderingCanvasClientRect()
-
-  const quad = MeshBuilder.CreatePlane('quad', { width: rect?.width, height: rect?.height }, scene)
+  const quad = MeshBuilder.CreatePlane('quad', { size: 10 }, scene)
   quad.position = Vector3.Zero()
+
+  function applyAspectRatio() {
+    const rect = scene.getEngine().getRenderingCanvasClientRect()
+    quad.scaling = new Vector3((rect?.width ?? 1) / (rect?.height ?? 1), 1, 1)
+  }
+
+  applyAspectRatio()
+  window.addEventListener('resize', applyAspectRatio)
 
   return quad
 }
@@ -84,6 +96,7 @@ async function createScene(engine: Engine): Promise<Scene> {
   const _camera = await orthographicCamera(scene)
 
   const organismMat = await shaderMaterial(engine, scene, 'organism')
+  
   const quad = await fullQuad(scene)
   quad.material = organismMat
   
