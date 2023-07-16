@@ -5,16 +5,17 @@
 
 varying coords: vec2<f32>;
 
-const FREQUENCY: vec2<f32> = vec2<f32>(2.0, 2.0);
+const FREQUENCY: vec2<f32> = vec2<f32>(1.5, 1.5);
 
-fn voronoi(pos: vec2<f32>) -> vec3<f32> {
-  var sampledPos = pos * FREQUENCY;
+fn voronoi(
+  pos: vec2<f32>,
+  offsetA: ptr<function, vec2<f32>>,
+  offsetB: ptr<function, vec2<f32>>,
+) -> vec2<f32> {
+  let iPos = floor(pos);
+  let fPos = fract(pos);
 
-  let iPos = floor(sampledPos);
-  let fPos = fract(sampledPos);
-
-  var f1 = 1.0;
-  var f2 = 1.0;
+  var dist = vec2<f32>(16.0, 16.0);
 
   for (var y: i32 = -1; y <= 1; y = y + 1) {
     for (var x: i32 = -1; x <= 1; x = x + 1) {
@@ -23,33 +24,53 @@ fn voronoi(pos: vec2<f32>) -> vec3<f32> {
       let offset = neighbor + featurePoint - fPos;
       let d = dot(offset, offset);
       
-      if (d < f1) {
-        f2 = f1;
-        f1 = d;
-      } else if (d < f2) {
-        f2 = d;
+      if (d < dist.x) {
+        dist.y = dist.x;
+        *offsetB = *offsetA;
+        dist.x = d;
+        *offsetA = offset;
+      } else if (d < dist.y) {
+        dist.y = d;
+        *offsetB = offset;
       }
     }
   }
 
-  var intensity = 0.0;
+  return sqrt(dist);
+}
 
-  intensity += smoothstep(0.00, 0.15, abs(f1 - f2));
+fn voronoiLayer(pos: vec2<f32>) -> vec3<f32> {
+  var offsetA: vec2<f32>;
+  var offsetB: vec2<f32>;
+  let dist = voronoi(pos, &offsetA, &offsetB);
 
-  return intensity * COLORS.WHITE.rgb;
+  let midpoint = 0.5 * (offsetA + offsetB);
+  let normal = normalize(offsetB - offsetA);
+  let proj = dot(midpoint, normal);
+
+  var color = vec3<f32>(0.0);
+
+  color += proj * COLORS.WHITE.rgb;
+
+  color += (1.0 - smoothstep(0.00, 0.02, proj)) * COLORS.WHITE.rgb;
+
+  return color;
 }
 
 fn blend(x: vec3<f32>, y: vec3<f32>) -> vec3<f32> {
-  return 0.5 * (x + y);
+  return mix(x, y, 0.3);
 }
 
 fn color_at(pos: vec2<f32>) -> vec4<f32> {
+  let sampledPos = pos * FREQUENCY;
+
   var color = vec3<f32>(0.0);
 
-  const LAYERS: i32 = 4;
+  const LAYERS: i32 = 3;
 
   for (var i: i32 = 0; i < LAYERS; i = i + 1) {
-    color = blend(voronoi(pos + RANDOM__random2d__f32(f32(i))), color);
+    let sampleOffset = f32(i);
+    color = blend(voronoiLayer(sampledPos + RANDOM__random2d__f32(sampleOffset)), color);
   }
 
   return vec4<f32>(color, 1.0);
