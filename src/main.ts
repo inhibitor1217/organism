@@ -1,6 +1,5 @@
 import {
   ArcRotateCamera,
-  AxesViewer,
   Camera,
   Engine,
   Mesh,
@@ -100,8 +99,6 @@ async function createScene(engine: Engine): Promise<Scene> {
   const quad = await fullQuad(scene)
   quad.material = organismMat
   
-  const _axesViewer = new AxesViewer(scene)
-
   return scene
 }
 
