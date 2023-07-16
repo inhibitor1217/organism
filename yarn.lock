@@ -5,6 +5,13 @@ __metadata:
   version: 6
   cacheKey: 8
 
+"@babylonjs/core@npm:^6.12.0":
+  version: 6.12.2
+  resolution: "@babylonjs/core@npm:6.12.2"
+  checksum: 6cfbff15718a4a691839ae4dd56e13a846e2dd76fedc69f8a5772e610a70d545463b77e3d8add1664839af17ebd25cf225744a215c86c131ab5561e5773943d4
+  languageName: node
+  linkType: hard
+
 "@esbuild/android-arm64@npm:0.18.13":
   version: 0.18.13
   resolution: "@esbuild/android-arm64@npm:0.18.13"
@@ -156,6 +163,15 @@ __metadata:
   version: 0.18.13
   resolution: "@esbuild/win32-x64@npm:0.18.13"
   conditions: os=win32 & cpu=x64
+  languageName: node
+  linkType: hard
+
+"@inhibitor1217/babylonjs-wgsl@npm:0.2.0":
+  version: 0.2.0
+  resolution: "@inhibitor1217/babylonjs-wgsl@npm:0.2.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40inhibitor1217%2Fbabylonjs-wgsl%2F0.2.0%2F0f061abfa3db67cb7182bfa0bd9c5ae0aea8adda"
+  peerDependencies:
+    "@babylonjs/core": ^5.0.0 || ^6.0.0
+  checksum: c5ff672c66d67e0fcaa214c33b4a76ee066e36ac1d22c162939ecfefd919d717880dc78f7201110c9db8f7a0f220c307e3f67f54afe62a7117d05c84d2c0baeb
   languageName: node
   linkType: hard
 
@@ -1019,6 +1035,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "organism@workspace:."
   dependencies:
+    "@babylonjs/core": ^6.12.0
+    "@inhibitor1217/babylonjs-wgsl": 0.2.0
     typescript: ^5.0.2
     vite: ^4.4.0
   languageName: unknown
