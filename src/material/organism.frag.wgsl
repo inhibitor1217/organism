@@ -8,6 +8,15 @@ varying coords: vec2<f32>;
 
 const FREQUENCY: vec2<f32> = vec2<f32>(1.5, 1.5);
 
+fn palette(t: f32) -> vec3<f32> {
+  const A: vec3<f32> = vec3<f32>(.2, .7, .4);
+  const B: vec3<f32> = vec3<f32>(.6, .9, .2);
+  const C: vec3<f32> = vec3<f32>(.6, .8, .7);
+  const D: vec3<f32> = vec3<f32>(.5, .1, .0);
+
+  return A + B * cos(6.28318 * (C * t + D));
+}
+
 fn voronoi(
   pos: vec2<f32>,
   seed: i32,
@@ -55,7 +64,7 @@ fn isHole(pos: vec2<f32>) -> bool {
 fn voronoiLayer(
   pos: vec2<f32>,
   seed: i32,
-) -> vec3<f32> {
+) -> f32 {
   var nearest: vec4<f32>;
   var secondNearest: vec4<f32>;
   let dist = voronoi(pos, seed, &nearest, &secondNearest);
@@ -70,49 +79,49 @@ fn voronoiLayer(
   let normal = normalize(secondNearestOffset - nearestOffset);
   let proj = dot(midpoint, normal);
 
-  var color = vec3<f32>(0.0);
+  var intensity = 0.0;
 
   let isExterior = !isHole(nearestFeaturePoint);
   let isInterior = !isExterior && isHole(secondNearestFeaturePoint);
 
   // Fill
   if (isExterior) {
-    color += proj * COLORS.WHITE.rgb;
+    intensity += proj;
   }
   
   // Outline
   if (!isInterior) {
-    color += .5 * (1.0 - smoothstep(0.00, 0.02, proj)) * COLORS.WHITE.rgb;
+    intensity += .5 * (1.0 - smoothstep(0.00, 0.02, proj));
   }
 
-  return color;
-}
-
-fn blend(x: vec3<f32>, y: vec3<f32>) -> vec3<f32> {
-  if (x.r > 0.0) {
-    return x + y * 0.2;
-  }
-  return y * 0.6;
+  return intensity;
 }
 
 fn color_at(pos: vec2<f32>) -> vec4<f32> {
   let sampledPos = pos * FREQUENCY;
 
-  const LAYERS: i32 = 5;
+  const LAYERS: i32 = 6;
   const LAYER_SCALE: f32 = 0.85;
   const LAYER_OFFSET: f32 = 1.0;
 
-  var color = voronoiLayer(sampledPos, 0);
-  var scale = pow(1. / LAYER_SCALE, f32(LAYERS - 1));
+  var color = vec3<f32>(0.0);
+  var scale = pow(1. / LAYER_SCALE, f32(LAYERS));
   var offset = vec2<f32>(cos(1.0), sin(1.0));
-  var offsetAmount = f32(1 - LAYERS) * LAYER_OFFSET;
+  var offsetAmount = f32(-LAYERS) * LAYER_OFFSET;
 
-  for (var i: i32 = 1; i < LAYERS; i = i + 1) {
+  for (var i: i32 = 0; i < LAYERS; i = i + 1) {
     scale *= LAYER_SCALE;
     offsetAmount += LAYER_OFFSET;
 
     let layerSampledPos = sampledPos * scale + offset * offsetAmount;
-    color = blend(voronoiLayer(layerSampledPos, i), color);
+    let layerIntensity = voronoiLayer(layerSampledPos, i);
+    let layerColor = palette(f32(i));
+
+    if (layerIntensity > 0.0) {
+      color = layerIntensity * layerColor + color * 0.5;
+    } else {
+      color = color * 0.9;
+    }
   }
 
   return vec4<f32>(color, 1.0);
