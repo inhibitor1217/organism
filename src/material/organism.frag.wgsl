@@ -9,10 +9,10 @@ varying coords: vec2<f32>;
 const FREQUENCY: vec2<f32> = vec2<f32>(1.5, 1.5);
 
 fn palette(t: f32) -> vec3<f32> {
-  const A: vec3<f32> = vec3<f32>(.2, .7, .4);
-  const B: vec3<f32> = vec3<f32>(.6, .9, .2);
-  const C: vec3<f32> = vec3<f32>(.6, .8, .7);
-  const D: vec3<f32> = vec3<f32>(.5, .1, .0);
+  const A: vec3<f32> = vec3<f32>(0.5, 0.5, 0.5);
+  const B: vec3<f32> = vec3<f32>(0.5, 0.5, 0.5);
+  const C: vec3<f32> = vec3<f32>(1.0, 1.0, 1.0);
+  const D: vec3<f32> = vec3<f32>(0.0, 0.1, 0.2);
 
   return A + B * cos(6.28318 * (C * t + D));
 }
@@ -86,12 +86,12 @@ fn voronoiLayer(
 
   // Fill
   if (isExterior) {
-    intensity += proj;
+    intensity += 3.0 * proj;
   }
   
   // Outline
   if (!isInterior) {
-    intensity += .5 * (1.0 - smoothstep(0.00, 0.02, proj));
+    intensity += (1.0 - smoothstep(0.00, 0.02, proj));
   }
 
   return intensity;
@@ -103,8 +103,9 @@ fn color_at(pos: vec2<f32>) -> vec4<f32> {
   const LAYERS: i32 = 6;
   const LAYER_SCALE: f32 = 0.85;
   const LAYER_OFFSET: f32 = 1.0;
+  const FOG_COLOR: vec3<f32> = vec3<f32>(0.0);
 
-  var color = vec3<f32>(0.0);
+  var color = FOG_COLOR;
   var scale = pow(1. / LAYER_SCALE, f32(LAYERS));
   var offset = vec2<f32>(cos(1.0), sin(1.0));
   var offsetAmount = f32(-LAYERS) * LAYER_OFFSET;
@@ -115,12 +116,14 @@ fn color_at(pos: vec2<f32>) -> vec4<f32> {
 
     let layerSampledPos = sampledPos * scale + offset * offsetAmount;
     let layerIntensity = voronoiLayer(layerSampledPos, i);
-    let layerColor = palette(f32(i));
+    let layerColor = palette(f32(i) * 0.1);
 
     if (layerIntensity > 0.0) {
-      color = layerIntensity * layerColor + color * 0.5;
+      // Layer
+      color = layerIntensity * layerColor + color * 0.33;
     } else {
-      color = color * 0.9;
+      // Fog
+      color = mix(color, FOG_COLOR, 0.33);
     }
   }
 
