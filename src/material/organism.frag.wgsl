@@ -8,15 +8,27 @@ varying coords: vec2<f32>;
 
 var<uniform> elapsedTimeMs: f32;
 
-const FREQUENCY: vec2<f32> = vec2<f32>(1.5, 1.5);
+const FREQUENCY: vec2<f32> = vec2<f32>(0.8, 0.8);
 
 fn palette(t: f32) -> vec3<f32> {
-  const A: vec3<f32> = vec3<f32>(0.5, 0.5, 0.5);
-  const B: vec3<f32> = vec3<f32>(0.5, 0.5, 0.5);
-  const C: vec3<f32> = vec3<f32>(1.0, 1.0, 1.0);
-  const D: vec3<f32> = vec3<f32>(0.0, 0.1, 0.2);
+  const A0: vec3<f32> = vec3<f32>(0.5, 0.5, 0.5);
+  const B0: vec3<f32> = vec3<f32>(0.5, 0.5, 0.5);
+  const C0: vec3<f32> = vec3<f32>(1.0, 1.0, 1.0);
+  const D0: vec3<f32> = vec3<f32>(0.0, 0.1, 0.2);
 
-  return A + B * cos(6.28318 * (C * t + D));
+  const A1: vec3<f32> = vec3<f32>(0.5, 0.5, 0.5);
+  const B1: vec3<f32> = vec3<f32>(0.5, 0.5, 0.5);
+  const C1: vec3<f32> = vec3<f32>(1.0, 1.0, 0.5);
+  const D1: vec3<f32> = vec3<f32>(0.8, 0.9, 0.3);
+
+  let p0 = A0 + B0 * cos(6.28318 * (C0 * t + D0));
+  let p1 = A1 + B1 * cos(6.28318 * (C1 * t + D1));
+
+  return mix(p0, p1, smoothstep(-0.5, 0.5, sin(t)));
+}
+
+fn mod289(x: f32) -> f32 {
+  return x - floor(x * (1.0 / 289.0)) * 289.0;
 }
 
 fn voronoi(
@@ -25,7 +37,7 @@ fn voronoi(
   nearest: ptr<function, vec4<f32>>,
   secondNearest: ptr<function, vec4<f32>>,
 ) -> vec2<f32> {
-  let sampleOffset = f32(seed) * vec2<f32>(16.0, 16.0);
+  let sampleOffset = mod289(f32(seed)) * vec2<f32>(16.0, 16.0);
 
   let iPos = floor(pos);
   let fPos = fract(pos);
@@ -88,12 +100,12 @@ fn voronoiLayer(
 
   // Fill
   if (isExterior) {
-    intensity += 3.0 * proj;
+    intensity += 2.0 * proj;
   }
   
   // Outline
   if (!isInterior) {
-    intensity += (1.0 - smoothstep(0.00, 0.02, proj));
+    intensity += 0.33 * (1.0 - smoothstep(0.00, 0.01, proj));
   }
 
   return intensity;
@@ -102,30 +114,47 @@ fn voronoiLayer(
 fn color_at(pos: vec2<f32>) -> vec4<f32> {
   let sampledPos = pos * FREQUENCY;
 
-  const LAYERS: i32 = 6;
-  const LAYER_SCALE: f32 = 0.85;
+  const NUM_LAYERS: i32 = 9;
+  const LAYER_SCALE: f32 = 0.70;
   const LAYER_OFFSET: f32 = 1.0;
   const FOG_COLOR: vec3<f32> = vec3<f32>(0.0);
+  const TIMESCALE: f32 = 1500.0;
+
+  let normalizedTime = elapsedTimeMs / TIMESCALE;
+  let iTime = i32(floor(normalizedTime));
+  let fTime = fract(normalizedTime);
 
   var color = FOG_COLOR;
-  var scale = pow(1. / LAYER_SCALE, f32(LAYERS));
+  var scale = pow(1. / LAYER_SCALE, f32(NUM_LAYERS) - fTime);
   var offset = vec2<f32>(cos(1.0), sin(1.0));
-  var offsetAmount = f32(-LAYERS) * LAYER_OFFSET;
+  var offsetAmount = -(f32(NUM_LAYERS) + 1.0 - fTime) * LAYER_OFFSET;
 
-  for (var i: i32 = 0; i < LAYERS; i = i + 1) {
+  for (var i: i32 = -NUM_LAYERS; i < 0; i = i + 1) {
+    // Calculate layer properties
+    let layerId = -i + iTime;
+    let layerZ  = f32(i) + fTime;
+
+    // Update layer dimensions
     scale *= LAYER_SCALE;
     offsetAmount += LAYER_OFFSET;
 
+    // Sample layer
     let layerSampledPos = sampledPos * scale + offset * offsetAmount;
-    let layerIntensity = voronoiLayer(layerSampledPos, i);
-    let layerColor = palette(f32(i) * 0.1 + elapsedTimeMs * 0.0001);
+    var layerIntensity = voronoiLayer(layerSampledPos, layerId);
+    let layerColor = palette(f32(layerId) * 0.05);
 
+    // Blend layer
     if (layerIntensity > 0.0) {
       // Layer
-      color = layerIntensity * layerColor + color * 0.33;
+      let nearFog = smoothstep(0.0, -1.0, layerZ);
+      let farFog  = smoothstep(-f32(NUM_LAYERS), -f32(NUM_LAYERS) + 1.0, layerZ);
+
+      color =
+        nearFog * farFog * layerIntensity * layerColor +
+        mix(FOG_COLOR, color, mix(1.00, 0.33, smoothstep(-1.0, -2.0, layerZ)));
     } else {
       // Fog
-      color = mix(color, FOG_COLOR, 0.33);
+      color = mix(FOG_COLOR, color, mix(1.00, 0.67, smoothstep(-1.0, -2.0, layerZ)));
     }
   }
 
