@@ -6,6 +6,8 @@
 
 varying coords: vec2<f32>;
 
+var<uniform> elapsedTimeMs: f32;
+
 const FREQUENCY: vec2<f32> = vec2<f32>(1.5, 1.5);
 
 fn palette(t: f32) -> vec3<f32> {
@@ -116,7 +118,7 @@ fn color_at(pos: vec2<f32>) -> vec4<f32> {
 
     let layerSampledPos = sampledPos * scale + offset * offsetAmount;
     let layerIntensity = voronoiLayer(layerSampledPos, i);
-    let layerColor = palette(f32(i) * 0.1);
+    let layerColor = palette(f32(i) * 0.1 + elapsedTimeMs * 0.0001);
 
     if (layerIntensity > 0.0) {
       // Layer

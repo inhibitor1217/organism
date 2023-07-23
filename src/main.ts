@@ -7,6 +7,7 @@ import {
   Scene,
   ShaderLanguage,
   ShaderMaterial,
+  UniformBuffer,
   Vector3,
   WebGPUEngine,
 } from '@babylonjs/core'
@@ -52,6 +53,21 @@ async function orthographicCamera(scene: Scene): Promise<Camera> {
   return camera;
 }
 
+async function createElapsedTimeUniformBuffer(engine: Engine): Promise<UniformBuffer> {
+  let elapsedMs = 0
+  const timeUbo = new UniformBuffer(engine)
+  timeUbo.addUniform('elapsedTimeMs', [elapsedMs])
+  timeUbo.update()
+
+  engine.runRenderLoop(() => {
+    elapsedMs += engine.getDeltaTime()
+    timeUbo.updateFloat('elapsedTimeMs', elapsedMs)
+    timeUbo.update()
+  })
+
+  return timeUbo
+}
+
 async function fullQuad(scene: Scene): Promise<Mesh> {
   const quad = MeshBuilder.CreatePlane('quad', { size: 10 }, scene)
   quad.position = Vector3.Zero()
@@ -72,6 +88,8 @@ async function shaderMaterial(
   scene: Scene,
   shader: string,
 ): Promise<ShaderMaterial> {
+  const elapsedTimeUbo = await createElapsedTimeUniformBuffer(engine)
+
   const mat = new ShaderMaterial(
     shader,
     scene,
@@ -85,6 +103,8 @@ async function shaderMaterial(
       shaderLanguage: ShaderLanguage.WGSL,
     },
   )
+
+  mat.setUniformBuffer('elapsedTimeMs', elapsedTimeUbo)
 
   return mat
 }
