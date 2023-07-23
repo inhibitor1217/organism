@@ -9,6 +9,7 @@ varying coords: vec2<f32>;
 var<uniform> elapsedTimeMs: f32;
 
 const FREQUENCY: vec2<f32> = vec2<f32>(0.8, 0.8);
+const PI = 3.141592653589793;
 
 fn palette(t: f32) -> vec3<f32> {
   const A0: vec3<f32> = vec3<f32>(0.5, 0.5, 0.5);
@@ -21,8 +22,8 @@ fn palette(t: f32) -> vec3<f32> {
   const C1: vec3<f32> = vec3<f32>(1.0, 1.0, 0.5);
   const D1: vec3<f32> = vec3<f32>(0.8, 0.9, 0.3);
 
-  let p0 = A0 + B0 * cos(6.28318 * (C0 * t + D0));
-  let p1 = A1 + B1 * cos(6.28318 * (C1 * t + D1));
+  let p0 = A0 + B0 * cos(2. * PI * (C0 * t + D0));
+  let p1 = A1 + B1 * cos(2. * PI * (C1 * t + D1));
 
   return mix(p0, p1, smoothstep(-0.5, 0.5, sin(t)));
 }
@@ -126,8 +127,14 @@ fn color_at(pos: vec2<f32>) -> vec4<f32> {
 
   var color = FOG_COLOR;
   var scale = pow(1. / LAYER_SCALE, f32(NUM_LAYERS) - fTime);
-  var offset = vec2<f32>(cos(1.0), sin(1.0));
+  var offset = vec2<f32>(1.0, 1.0);
   var offsetAmount = -(f32(NUM_LAYERS) + 1.0 - fTime) * LAYER_OFFSET;
+
+  let rotateAngle = 2. * PI * cos(0.03 * normalizedTime);
+  let rotate = mat2x2<f32>(
+    cos(rotateAngle), -sin(rotateAngle),
+    sin(rotateAngle), cos(rotateAngle),
+  );
 
   for (var i: i32 = -NUM_LAYERS; i < 0; i = i + 1) {
     // Calculate layer properties
@@ -139,7 +146,7 @@ fn color_at(pos: vec2<f32>) -> vec4<f32> {
     offsetAmount += LAYER_OFFSET;
 
     // Sample layer
-    let layerSampledPos = sampledPos * scale + offset * offsetAmount;
+    let layerSampledPos = rotate * (sampledPos * scale + offset * offsetAmount);
     var layerIntensity = voronoiLayer(layerSampledPos, layerId);
     let layerColor = palette(f32(layerId) * 0.05);
 
@@ -154,7 +161,7 @@ fn color_at(pos: vec2<f32>) -> vec4<f32> {
         mix(FOG_COLOR, color, mix(1.00, 0.33, smoothstep(-1.0, -2.0, layerZ)));
     } else {
       // Fog
-      color = mix(FOG_COLOR, color, mix(1.00, 0.67, smoothstep(-1.0, -2.0, layerZ)));
+      color = mix(FOG_COLOR, color, mix(1.00, 0.60, smoothstep(-1.0, -2.0, layerZ)));
     }
   }
 
