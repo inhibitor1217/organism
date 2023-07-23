@@ -112,7 +112,7 @@ async function shaderMaterial(
 async function createScene(engine: Engine): Promise<Scene> {
   const scene = new Scene(engine)
 
-  const _camera = await orthographicCamera(scene)
+  await orthographicCamera(scene)
 
   const organismMat = await shaderMaterial(engine, scene, 'organism')
   
